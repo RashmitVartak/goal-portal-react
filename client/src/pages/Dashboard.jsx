@@ -16,8 +16,9 @@ export default function Dashboard() {
   useEffect(load, []);
 
   if (!data) return <div className="animate-pulse">Loading...</div>;
-  const { cycle, sheet, goals, team_pending, shared_goals } = data;
+  const { cycle, sheet, goals, team_pending, shared_goals, active_window, window_dates } = data;
   const totalWeight = goals.reduce((s, g) => s + g.weightage, 0);
+  const isGoalSettingOpen = active_window === 'GOAL_SETTING';
 
   const createSheet = async () => { await api.post('/goal-sheets'); load(); };
 
@@ -99,6 +100,18 @@ export default function Dashboard() {
       {!cycle && <div className="bg-yellow-50 text-yellow-700 px-4 py-3 rounded-lg">No active cycle. Contact Admin.</div>}
 
       {cycle && <>
+        {active_window && window_dates && (
+          <div className={`px-4 py-3 rounded-lg mb-4 text-sm ${isGoalSettingOpen ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+            {isGoalSettingOpen
+              ? `✅ Goal Setting window is open (${window_dates.start} to ${window_dates.end}). You can create, edit, and submit goals.`
+              : `⚠️ Goal Setting window is closed. Current window: ${active_window}. Goals cannot be created or modified.`}
+          </div>
+        )}
+        {!active_window && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            ⚠️ No window is currently open. Goal creation and achievement tracking are disabled.
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <StatCard label="Goals" value={`${goals.length} / 8`} color="blue" />
           <StatCard label="Total Weightage" value={`${totalWeight}%`} sub={totalWeight !== 100 && goals.length > 0 ? `${100 - totalWeight}% remaining` : null} color={totalWeight === 100 ? 'green' : 'orange'} />
