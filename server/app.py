@@ -14,6 +14,7 @@ app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get("SECRET_KEY", "goal-portal-secret-key-change-in-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = 0
 CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://localhost:5173"])
 
 
@@ -112,6 +113,7 @@ def login():
     db.close()
     if not u:
         return jsonify({"error": "Invalid credentials"}), 401
+    session.permanent = False
     session["employee_id"] = u["employee_id"]
     user_dict = row_to_dict(u)
     user_dict.pop("password", None)
