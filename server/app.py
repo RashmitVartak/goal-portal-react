@@ -247,6 +247,9 @@ def create_sheet():
     cycle = active_cycle()
     if not cycle:
         return jsonify({"error": "No active cycle"}), 400
+    window, _ = get_active_window(cycle)
+    if window != "GOAL_SETTING":
+        return jsonify({"error": f"Goal setting window is not open. Current window: {window or 'None'}. Goal setting: {cycle['goal_setting_start']} to {cycle['goal_setting_end']}"}), 400
     db = get_db()
     existing = db.execute("SELECT * FROM goal_sheets WHERE employee_id=? AND cycle_id=?", (session["employee_id"], cycle["cycle_id"])).fetchone()
     if not existing:
@@ -260,6 +263,9 @@ def create_sheet():
 @auth_required
 def submit_sheet():
     cycle = active_cycle()
+    window, _ = get_active_window(cycle)
+    if window != "GOAL_SETTING":
+        return jsonify({"error": f"Goal setting window is closed. Current window: {window or 'None'}."}), 400
     db = get_db()
     sheet = db.execute("SELECT * FROM goal_sheets WHERE employee_id=? AND cycle_id=?", (session["employee_id"], cycle["cycle_id"])).fetchone()
     if not sheet or sheet["status"] not in ("DRAFT", "RETURNED"):
@@ -285,6 +291,9 @@ def submit_sheet():
 @auth_required
 def add_goal():
     cycle = active_cycle()
+    window, _ = get_active_window(cycle)
+    if window != "GOAL_SETTING":
+        return jsonify({"error": f"Goal setting window is closed. Current window: {window or 'None'}."}), 400
     db = get_db()
     sheet = db.execute("SELECT * FROM goal_sheets WHERE employee_id=? AND cycle_id=?", (session["employee_id"], cycle["cycle_id"])).fetchone()
     if not sheet or sheet["status"] not in ("DRAFT", "RETURNED"):
@@ -443,6 +452,7 @@ def manager_edit_goal(gid):
 def get_achievements():
     u = current_user()
     cycle = active_cycle()
+    window, window_dates = get_active_window(cycle)
     db = get_db()
     sheet = None
     goals = []
@@ -452,7 +462,7 @@ def get_achievements():
         if sheet:
             goals = rows_to_list(db.execute("SELECT g.*,t.thrust_area_name FROM goals g LEFT JOIN thrust_areas t ON g.thrust_area_id=t.thrust_area_id WHERE g.sheet_id=? ORDER BY g.goal_id", (sheet["sheet_id"],)).fetchall())
     db.close()
-    return jsonify({"sheet": sheet, "goals": goals, "cycle": cycle})
+    return jsonify({"sheet": sheet, "goals": goals, "cycle": cycle, "active_window": window, "window_dates": window_dates})
 
 
 @app.post("/api/achievements/<int:gid>")
@@ -462,6 +472,14 @@ def update_achievement(gid):
     quarter = d["quarter"]
     actual = d.get("actual", "")
     status_val = d.get("status", "NOT_STARTED")
+    cycle = active_cycle()
+    window, window_dates = get_active_window(cycle)
+    if window != quarter:
+        if window and window_dates:
+            msg = f"Cannot update {quarter} achievements. Active window: {window} ({window_dates['start']} to {window_dates['end']})."
+        else:
+            msg = f"Cannot update {quarter} achievements. No check-in window is currently open."
+        return jsonify({"error": msg}), 400
     db = get_db()
     g = db.execute("SELECT * FROM goals WHERE goal_id=?", (gid,)).fetchone()
     if not g:
@@ -1109,11 +1127,16 @@ def ai_checkin_summary(sheet_id):
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_react(path):
+    if path and path.startswith("api"):
+        return jsonify({"error": "Not found"}), 404
     if path and os.path.exists(os.path.join(STATIC_FOLDER, path)):
         return send_from_directory(STATIC_FOLDER, path)
-    return send_from_directory(STATIC_FOLDER, "index.html")
+    index_path = os.path.join(STATIC_FOLDER, "index.html")
+    if os.path.exists(index_path):
+        return send_from_directory(STATIC_FOLDER, "index.html")
+    return jsonify({"error": "React build not found. Run: cd client && npm run build && cp -r dist/* ../server/static/", "static_folder": STATIC_FOLDER, "exists": os.path.exists(STATIC_FOLDER)}), 500
 
-###
+
 if __name__ == "__main__":
     init_db()
     seed_data()
