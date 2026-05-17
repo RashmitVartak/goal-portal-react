@@ -6,6 +6,10 @@ from database import get_db, init_db, seed_data
 from scoring import compute_score
 
 STATIC_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+if not os.path.exists(STATIC_FOLDER):
+    STATIC_FOLDER = os.path.join(os.getcwd(), "static")
+if not os.path.exists(STATIC_FOLDER):
+    STATIC_FOLDER = os.path.join(os.getcwd(), "server", "static")
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
 app.secret_key = os.environ.get("SECRET_KEY", "goal-portal-secret-key-change-in-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
