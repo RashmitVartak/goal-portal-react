@@ -1,11 +1,13 @@
+import os
 import google.generativeai as genai
 import threading
 
 GEMINI_KEYS = [
-    "AIzaSyBL7vKK58aF8wKCOOZahic4pLmA9zKA85M",
-    "AIzaSyBVvy6xyopLyrF3JQcqxgqkf9CGfTSXo3M",
-    "AIzaSyDxxrCEAhVdzRCXuEX5akDmOE-Sanol7wA",
+    os.environ.get("GEMINI_KEY_1", ""),
+    os.environ.get("GEMINI_KEY_2", ""),
+    os.environ.get("GEMINI_KEY_3", ""),
 ]
+GEMINI_KEYS = [k for k in GEMINI_KEYS if k]
 
 _lock = threading.Lock()
 _index = 0

@@ -1,4 +1,7 @@
 import os, csv, io
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env")
 from datetime import datetime, date
 from flask import Flask, request, jsonify, session, Response, send_from_directory
 from flask_cors import CORS
