@@ -10,7 +10,7 @@ if not os.path.exists(STATIC_FOLDER):
     STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 if not os.path.exists(STATIC_FOLDER):
     STATIC_FOLDER = os.path.join(os.getcwd(), "server", "static")
-app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
+app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get("SECRET_KEY", "goal-portal-secret-key-change-in-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -1159,12 +1159,10 @@ def debug_paths():
 def serve_react(path):
     if path and path.startswith("api"):
         return jsonify({"error": "Not found"}), 404
-    if path and os.path.exists(os.path.join(STATIC_FOLDER, path)):
+    file_path = os.path.join(STATIC_FOLDER, path)
+    if path and os.path.isfile(file_path):
         return send_from_directory(STATIC_FOLDER, path)
-    index_path = os.path.join(STATIC_FOLDER, "index.html")
-    if os.path.exists(index_path):
-        return send_from_directory(STATIC_FOLDER, "index.html")
-    return jsonify({"error": "React build not found. Run: cd client && npm run build && cp -r dist/* ../server/static/", "static_folder": STATIC_FOLDER, "exists": os.path.exists(STATIC_FOLDER)}), 500
+    return send_from_directory(STATIC_FOLDER, "index.html")
 
 
 if __name__ == "__main__":
