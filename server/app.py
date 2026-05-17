@@ -10,9 +10,7 @@ if not os.path.exists(STATIC_FOLDER):
     STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 if not os.path.exists(STATIC_FOLDER):
     STATIC_FOLDER = os.path.join(os.getcwd(), "server", "static")
-# app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
-app = Flask(__name__, static_folder=None)
-
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
 app.secret_key = os.environ.get("SECRET_KEY", "goal-portal-secret-key-change-in-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -1128,6 +1126,32 @@ def ai_checkin_summary(sheet_id):
         "recommendations": recommendations,
         "prior_comments": len(comments),
     })
+
+
+@app.get("/api/debug/paths")
+def debug_paths():
+    import glob
+    base = os.path.dirname(os.path.abspath(__file__))
+    cwd = os.getcwd()
+    candidates = [
+        os.path.join(base, "static"),
+        os.path.join(cwd, "static"),
+        os.path.join(cwd, "server", "static"),
+    ]
+    result = {
+        "cwd": cwd,
+        "file_dir": base,
+        "static_folder": STATIC_FOLDER,
+        "static_exists": os.path.exists(STATIC_FOLDER),
+    }
+    for c in candidates:
+        result[c] = os.path.exists(c)
+    try:
+        result["cwd_contents"] = os.listdir(cwd)
+        result["base_contents"] = os.listdir(base)
+    except:
+        pass
+    return jsonify(result)
 
 
 @app.route("/", defaults={"path": ""})
