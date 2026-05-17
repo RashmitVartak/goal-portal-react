@@ -4,10 +4,23 @@ import { api } from '../api';
 export default function Reports() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState(0);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   useEffect(() => { api.get('/reports').then(setData); }, []);
   if (!data) return <div className="animate-pulse">Loading...</div>;
   const { report, completion, checkins, cycle, role, department } = data;
   const scopeLabel = role === 'ADMIN' ? 'All Departments' : role === 'MANAGER' ? `${department} (Your Team)` : 'My Goals';
+
+  const askAi = async () => {
+    if (!aiQuery.trim()) return;
+    setAiLoading(true);
+    try {
+      const res = await api.post('/ai/report-summary', { query: aiQuery });
+      setAiSummary(res.summary);
+    } catch (err) { setAiSummary('Error: ' + err.message); }
+    setAiLoading(false);
+  };
 
   return (
     <div>
@@ -16,6 +29,27 @@ export default function Reports() {
           <h2 className="text-2xl font-bold">Reports</h2>
           <p className="text-sm text-gray-500">Showing: <span className="font-semibold text-brand">{scopeLabel}</span></p>
         </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 mb-6">
+        <h4 className="font-bold text-purple-800 text-sm mb-2">🤖 AI Report Assistant <span className="font-normal text-purple-500">— powered by Gemini</span></h4>
+        <p className="text-xs text-purple-600 mb-3">Ask any question about the report data. E.g., "Summarize Sales department performance" or "Who are the top performers in Q1?"</p>
+        <div className="flex gap-2">
+          <input value={aiQuery} onChange={e => setAiQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && askAi()}
+            placeholder="Ask about reports..." className="flex-1 border border-purple-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400" />
+          <button onClick={askAi} disabled={aiLoading} className={`px-4 py-2 rounded-lg text-sm font-semibold ${aiLoading ? 'bg-purple-200 text-purple-400' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
+            {aiLoading ? '✨ Analyzing...' : '✨ Ask AI'}
+          </button>
+        </div>
+        {aiSummary && (
+          <div className="mt-3 bg-white border border-purple-200 rounded-lg p-4">
+            <div className="flex justify-between items-start mb-2">
+              <p className="font-semibold text-sm text-purple-800">AI Response:</p>
+              <button onClick={() => setAiSummary('')} className="text-purple-400 hover:text-purple-600 text-sm">×</button>
+            </div>
+            <div className="text-sm text-gray-700 whitespace-pre-line">{aiSummary}</div>
+          </div>
+        )}
       </div>
       <div className="flex gap-1 mb-6">
         {['Achievement Report','Completion Dashboard'].map((t,i) => (
