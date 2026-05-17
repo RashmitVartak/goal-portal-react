@@ -10,7 +10,9 @@ if not os.path.exists(STATIC_FOLDER):
     STATIC_FOLDER = os.path.join(os.getcwd(), "static")
 if not os.path.exists(STATIC_FOLDER):
     STATIC_FOLDER = os.path.join(os.getcwd(), "server", "static")
-app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
+# app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
+app = Flask(__name__, static_folder=None)
+
 app.secret_key = os.environ.get("SECRET_KEY", "goal-portal-secret-key-change-in-prod")
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
