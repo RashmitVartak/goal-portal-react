@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 
+// This page is accessible by all roles but shows different data based on role:
+// - Employees see their own analytics (goals distribution, trends, heatmap)
+// - Managers see aggregated data for their team + manager effectiveness
+// - Admins see aggregated data for all employees + manager effectiveness across departments
+
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState(0);
