@@ -935,6 +935,22 @@ def add_rule():
     return jsonify({"ok": True})
 
 
+@app.put("/api/escalation/rules/<int:rid>")
+@auth_required
+@role_required("ADMIN")
+def edit_rule(rid):
+    d = request.json
+    db = get_db()
+    db.execute("UPDATE escalation_rules SET rule_name=?,trigger_condition=?,days_threshold=?,escalation_level=?,notify_employee=?,notify_manager=?,notify_skip_level=?,notify_hr=?,is_active=? WHERE rule_id=?",
+        (d["rule_name"], d["trigger_condition"], int(d["days_threshold"]), int(d.get("escalation_level",1)),
+         1 if d.get("notify_employee") else 0, 1 if d.get("notify_manager") else 0,
+         1 if d.get("notify_skip_level") else 0, 1 if d.get("notify_hr") else 0,
+         1 if d.get("is_active", True) else 0, rid))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+
 # ── AI FEATURES ──
 
 GOAL_SUGGESTIONS = {

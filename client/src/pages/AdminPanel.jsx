@@ -36,27 +36,92 @@ function CyclesTab({ cycles, onReload }) {
   const [show, setShow] = useState(false);
   const [f, setF] = useState({ cycle_name:'', cycle_year:2027, goal_setting_start:'', goal_setting_end:'', q1_start:'', q1_end:'', q2_start:'', q2_end:'', q3_start:'', q3_end:'', q4_start:'', q4_end:'' });
   const save = async (e) => { e.preventDefault(); await api.post('/admin/cycles', f); setShow(false); onReload(); };
+
+  const periods = [
+    { key: 'goal_setting', label: 'Goal Setting', desc: 'Create, edit & submit goals', icon: '📝' },
+    { key: 'q1', label: 'Q1 Check-in', desc: 'First quarterly review', icon: '1️⃣' },
+    { key: 'q2', label: 'Q2 Check-in', desc: 'Second quarterly review', icon: '2️⃣' },
+    { key: 'q3', label: 'Q3 Check-in', desc: 'Third quarterly review', icon: '3️⃣' },
+    { key: 'q4', label: 'Q4 / Annual', desc: 'Final achievement capture', icon: '4️⃣' },
+  ];
+
   return (
     <div>
       <Table cols={['Name','Year','Goal Setting','Q1','Q2','Q3','Q4','Active']}
         rows={cycles.map(c => [c.cycle_name,c.cycle_year,`${c.goal_setting_start} → ${c.goal_setting_end}`,`${c.q1_start} → ${c.q1_end}`,`${c.q2_start} → ${c.q2_end}`,`${c.q3_start} → ${c.q3_end}`,`${c.q4_start} → ${c.q4_end}`,c.is_active?'✅':'—'])} />
-      <button onClick={() => setShow(!show)} className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">+ New Cycle</button>
-      {show && <form onSubmit={save} className="bg-gray-50 rounded-lg p-4 mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <input placeholder="Cycle Name" className="col-span-2 border rounded px-3 py-2 text-sm" value={f.cycle_name} onChange={e => setF({...f,cycle_name:e.target.value})} required />
-        <input type="number" placeholder="Year" className="border rounded px-3 py-2 text-sm" value={f.cycle_year} onChange={e => setF({...f,cycle_year:parseInt(e.target.value)})} required />
-        {['goal_setting','q1','q2','q3','q4'].map(p => [
-          <input key={p+'s'} type="date" className="border rounded px-3 py-2 text-sm" value={f[`${p}_start`]} onChange={e => setF({...f,[`${p}_start`]:e.target.value})} required />,
-          <input key={p+'e'} type="date" className="border rounded px-3 py-2 text-sm" value={f[`${p}_end`]} onChange={e => setF({...f,[`${p}_end`]:e.target.value})} required />
-        ])}
-        <button type="submit" className="col-span-2 bg-green-600 text-white py-2 rounded-lg text-sm">Create</button>
-      </form>}
+      <button onClick={() => setShow(!show)} className="mt-3 bg-brand text-gray-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-brand-dark">{show ? 'Cancel' : '+ New Cycle'}</button>
+
+      {show && (
+        <form onSubmit={save} className="mt-4 bg-white border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-gray-50 px-6 py-4 border-b">
+            <h4 className="font-bold text-lg">Create New Cycle</h4>
+            <p className="text-gray-500 text-xs mt-1">Define the fiscal year and all quarterly windows</p>
+          </div>
+
+          <div className="px-6 py-4 border-b">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Cycle Name *</label>
+                <input placeholder="e.g. FY 2027-28" className="w-full border rounded-lg px-3 py-2.5 text-sm" value={f.cycle_name} onChange={e => setF({...f,cycle_name:e.target.value})} required />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Year *</label>
+                <input type="number" className="w-full border rounded-lg px-3 py-2.5 text-sm" value={f.cycle_year} onChange={e => setF({...f,cycle_year:parseInt(e.target.value)})} required />
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-1/4">Period</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Start Date *</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">End Date *</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {periods.map(p => (
+                  <tr key={p.key} className="hover:bg-gray-50">
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{p.icon}</span>
+                        <span className="font-semibold">{p.label}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 text-gray-500 text-xs">{p.desc}</td>
+                    <td className="px-6 py-3">
+                      <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={f[`${p.key}_start`]} onChange={e => setF({...f,[`${p.key}_start`]:e.target.value})} required />
+                    </td>
+                    <td className="px-6 py-3">
+                      <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={f[`${p.key}_end`]} onChange={e => setF({...f,[`${p.key}_end`]:e.target.value})} required />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3">
+            <button type="button" onClick={() => setShow(false)} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-200">Cancel</button>
+            <button type="submit" className="bg-green-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700">Create Cycle</button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
 
 function EmployeesTab({ employees, onReload }) {
   const [show, setShow] = useState(false);
+  const [selectedDept, setSelectedDept] = useState('All');
   const [f, setF] = useState({ employee_id:'',employee_name:'',email:'',department:'',designation:'',role:'EMPLOYEE',manager_id:'',password:'password123' });
+
+  const departments = ['All', ...new Set(employees.map(e => e.department).filter(Boolean))];
+  const filtered = selectedDept === 'All' ? employees : employees.filter(e => e.department === selectedDept);
+  const deptCounts = {};
+  employees.forEach(e => { const d = e.department || 'Unknown'; deptCounts[d] = (deptCounts[d] || 0) + 1; });
 
   const save = async (e) => { e.preventDefault(); await api.post('/admin/employees', f); setShow(false); onReload(); };
   const deleteEmp = async (id) => {
@@ -65,36 +130,49 @@ function EmployeesTab({ employees, onReload }) {
 
   return (
     <div>
-      <div className="overflow-x-auto bg-white rounded-xl shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50"><tr>
-            {['ID','Name','Email','Dept','Designation','Role','Manager','Actions'].map(c => <th key={c} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">{c}</th>)}
-          </tr></thead>
-          <tbody className="divide-y">
-            {employees.map(emp => (
-              <tr key={emp.employee_id} className={`hover:bg-gray-50 ${!emp.is_active ? 'opacity-40' : ''}`}>
-                <td className="px-4 py-2">{emp.employee_id}</td>
-                <td className="px-4 py-2">{emp.employee_name}</td>
-                <td className="px-4 py-2">{emp.email}</td>
-                <td className="px-4 py-2">{emp.department}</td>
-                <td className="px-4 py-2">{emp.designation}</td>
-                <td className="px-4 py-2">
-                  <span className={`text-xs px-2 py-1 rounded-full font-semibold ${emp.role==='ADMIN'?'bg-red-100 text-red-700':emp.role==='MANAGER'?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}`}>{emp.role}</span>
-                </td>
-                <td className="px-4 py-2">{emp.manager_id||'—'}</td>
-                <td className="px-4 py-2">
-                  {emp.is_active ? (
-                    <button onClick={() => deleteEmp(emp.employee_id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Deactivate</button>
-                  ) : (
-                    <span className="text-gray-400 text-xs">Inactive</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-semibold text-gray-700">Department:</label>
+          <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="border rounded-lg px-4 py-2 text-sm font-semibold focus:ring-2 focus:ring-brand">
+            {departments.map(d => <option key={d} value={d}>{d} {d !== 'All' ? `(${deptCounts[d] || 0})` : `(${employees.length})`}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {departments.filter(d => d !== 'All').map(d => (
+            <button key={d} onClick={() => setSelectedDept(d)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${selectedDept === d ? 'bg-brand text-gray-900' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {d} ({deptCounts[d] || 0})
+            </button>
+          ))}
+        </div>
       </div>
-      <button onClick={() => setShow(!show)} className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Employee</button>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(emp => (
+          <div key={emp.employee_id} className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${emp.role==='ADMIN'?'border-red-400':emp.role==='MANAGER'?'border-brand':'border-blue-400'} ${!emp.is_active ? 'opacity-40' : ''}`}>
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-bold text-sm">{emp.employee_name}</h4>
+                <p className="text-xs text-gray-500">{emp.designation}</p>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${emp.role==='ADMIN'?'bg-red-100 text-red-700':emp.role==='MANAGER'?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}`}>{emp.role}</span>
+            </div>
+            <div className="mt-3 space-y-1 text-xs text-gray-600">
+              <p><span className="font-semibold text-gray-500">ID:</span> {emp.employee_id}</p>
+              <p><span className="font-semibold text-gray-500">Email:</span> {emp.email || '—'}</p>
+              <p><span className="font-semibold text-gray-500">Dept:</span> {emp.department}</p>
+              <p><span className="font-semibold text-gray-500">Manager:</span> {emp.manager_id || '—'}</p>
+            </div>
+            {emp.is_active ? (
+              <button onClick={() => deleteEmp(emp.employee_id)} className="mt-3 text-red-600 hover:text-red-800 text-xs font-semibold">Deactivate</button>
+            ) : (
+              <span className="mt-3 inline-block text-gray-400 text-xs">Inactive</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button onClick={() => setShow(!show)} className="mt-4 bg-brand text-gray-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-brand-dark">{show ? 'Cancel' : '+ Add Employee'}</button>
       {show && <form onSubmit={save} className="bg-gray-50 rounded-lg p-4 mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
         <input placeholder="Employee ID*" className="border rounded px-3 py-2 text-sm" value={f.employee_id} onChange={e => setF({...f,employee_id:e.target.value})} required />
         <input placeholder="Name*" className="border rounded px-3 py-2 text-sm" value={f.employee_name} onChange={e => setF({...f,employee_name:e.target.value})} required />
