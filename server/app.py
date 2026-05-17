@@ -1113,7 +1113,7 @@ def serve_react(path):
         return send_from_directory(STATIC_FOLDER, path)
     return send_from_directory(STATIC_FOLDER, "index.html")
 
-
+###
 if __name__ == "__main__":
     init_db()
     seed_data()
