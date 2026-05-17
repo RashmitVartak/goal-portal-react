@@ -1,6 +1,5 @@
 server/.env
 server/goal_portal.db
-server/static/
 server/__pycache__/
 client/node_modules/
 client/dist/
