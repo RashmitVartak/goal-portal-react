@@ -8,17 +8,26 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/me').then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
+    if (!sessionStorage.getItem('trackstar_session')) {
+      api.post('/logout').catch(() => {}).finally(() => {
+        setUser(null);
+        setLoading(false);
+      });
+    } else {
+      api.get('/me').then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
+    }
   }, []);
 
   const login = async (employee_id, password) => {
     const u = await api.post('/login', { employee_id, password });
+    sessionStorage.setItem('trackstar_session', '1');
     setUser(u);
     return u;
   };
 
   const logout = async () => {
     await api.post('/logout');
+    sessionStorage.removeItem('trackstar_session');
     setUser(null);
   };
 
