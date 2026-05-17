@@ -12,7 +12,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://localhost:5173"])
 
-#
+
 def row_to_dict(row):
     return dict(row) if row else None
 
