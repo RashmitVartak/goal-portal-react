@@ -77,8 +77,10 @@ def send_notif(recipient_id, ntype, title, message, etype=None, eid=None):
     db.close()
 
 
+from functools import wraps
+
+
 def auth_required(f):
-    from functools import wraps
     @wraps(f)
     def decorated(*args, **kwargs):
         if "employee_id" not in session:
@@ -89,7 +91,6 @@ def auth_required(f):
 
 def role_required(*roles):
     def decorator(f):
-        from functools import wraps
         @wraps(f)
         def decorated(*args, **kwargs):
             u = current_user()
@@ -219,31 +220,6 @@ def dashboard():
 
 
 # ── GOAL SHEET ──
-
-@app.get("/api/debug/shared-goals")
-@auth_required
-def debug_shared_goals():
-    u = current_user()
-    db = get_db()
-    all_sg = rows_to_list(db.execute("SELECT * FROM shared_goals").fetchall())
-    cycle = active_cycle()
-    sheet = None
-    existing_ids = []
-    if cycle:
-        s = db.execute("SELECT * FROM goal_sheets WHERE employee_id=? AND cycle_id=?", (u["employee_id"], cycle["cycle_id"])).fetchone()
-        if s:
-            sheet = row_to_dict(s)
-            goals = rows_to_list(db.execute("SELECT shared_goal_id FROM goals WHERE sheet_id=?", (s["sheet_id"],)).fetchall())
-            existing_ids = [g["shared_goal_id"] for g in goals if g["shared_goal_id"]]
-    db.close()
-    return jsonify({
-        "user_dept": u["department"],
-        "all_shared_goals": all_sg,
-        "existing_ids_in_sheet": existing_ids,
-        "has_sheet": sheet is not None,
-        "sheet_status": sheet["status"] if sheet else None,
-    })
-
 
 @app.post("/api/goal-sheets")
 @auth_required
@@ -953,108 +929,6 @@ def edit_rule(rid):
 
 # ── AI FEATURES ──
 
-GOAL_SUGGESTIONS = {
-    "Revenue Growth": {
-        "Sales": [
-            {"title": "Achieve quarterly sales revenue target", "description": "Drive revenue growth by acquiring new clients and expanding existing accounts to meet quarterly sales targets", "uom_type": "NUMERIC_MIN", "target_hint": "Amount in ₹ (e.g., 5000000)"},
-            {"title": "Increase new client acquisitions", "description": "Expand customer base by identifying and converting new business opportunities through targeted outreach", "uom_type": "NUMERIC_MIN", "target_hint": "Number of new clients (e.g., 15)"},
-            {"title": "Grow upsell/cross-sell revenue by target %", "description": "Increase revenue from existing accounts through strategic upselling and cross-selling of products/services", "uom_type": "PERCENT_MIN", "target_hint": "Growth % (e.g., 20)"},
-        ],
-        "Engineering": [
-            {"title": "Deliver product features that drive revenue", "description": "Build and ship high-impact product features aligned with sales pipeline needs and customer requests", "uom_type": "NUMERIC_MIN", "target_hint": "Number of revenue features shipped (e.g., 5)"},
-            {"title": "Reduce customer churn through product stability", "description": "Improve product reliability to reduce churn rate and protect recurring revenue streams", "uom_type": "PERCENT_MAX", "target_hint": "Churn rate % (e.g., 3)"},
-        ],
-        "_default": [
-            {"title": "Contribute to departmental revenue targets", "description": "Support revenue growth initiatives through cross-functional collaboration and process improvements", "uom_type": "NUMERIC_MIN", "target_hint": "Contribution amount or count"},
-        ],
-    },
-    "Customer Satisfaction": {
-        "Sales": [
-            {"title": "Achieve target Net Promoter Score (NPS)", "description": "Maintain high customer satisfaction by ensuring quality service delivery and timely issue resolution", "uom_type": "NUMERIC_MIN", "target_hint": "NPS score (e.g., 85)"},
-            {"title": "Reduce customer complaint resolution time", "description": "Resolve customer complaints within SLA timelines to improve satisfaction and retention rates", "uom_type": "NUMERIC_MAX", "target_hint": "Avg days to resolve (e.g., 3)"},
-        ],
-        "Engineering": [
-            {"title": "Reduce production bug count per release", "description": "Improve code quality and testing practices to minimize customer-facing bugs in each release cycle", "uom_type": "NUMERIC_MAX", "target_hint": "Bugs per release (e.g., 5)"},
-            {"title": "Achieve target system uptime percentage", "description": "Maintain system reliability and availability to ensure uninterrupted customer experience", "uom_type": "PERCENT_MIN", "target_hint": "Uptime % (e.g., 99.5)"},
-        ],
-        "HR": [
-            {"title": "Achieve internal employee satisfaction score", "description": "Improve employee experience through engagement initiatives, surveys, and action on feedback", "uom_type": "PERCENT_MIN", "target_hint": "Satisfaction % (e.g., 85)"},
-        ],
-        "_default": [
-            {"title": "Improve stakeholder satisfaction score", "description": "Enhance service quality for internal/external stakeholders through proactive communication and delivery", "uom_type": "PERCENT_MIN", "target_hint": "Satisfaction % (e.g., 90)"},
-        ],
-    },
-    "Operational Excellence": {
-        "Sales": [
-            {"title": "Reduce average deal closure cycle time", "description": "Streamline the sales process to shorten time from lead to signed contract", "uom_type": "NUMERIC_MAX", "target_hint": "Days (e.g., 15)"},
-            {"title": "Achieve sales forecast accuracy target", "description": "Improve pipeline management and forecasting accuracy for better resource planning", "uom_type": "PERCENT_MIN", "target_hint": "Accuracy % (e.g., 90)"},
-        ],
-        "Engineering": [
-            {"title": "Reduce deployment lead time", "description": "Optimize CI/CD pipeline and release processes to enable faster and more reliable deployments", "uom_type": "NUMERIC_MAX", "target_hint": "Hours per deployment (e.g., 4)"},
-            {"title": "Achieve sprint velocity consistency", "description": "Maintain consistent delivery velocity across sprints through better estimation and planning", "uom_type": "PERCENT_MIN", "target_hint": "Velocity variance within % (e.g., 85)"},
-        ],
-        "HR": [
-            {"title": "Reduce time-to-hire for open positions", "description": "Streamline recruitment process to fill open positions faster without compromising quality", "uom_type": "NUMERIC_MAX", "target_hint": "Days to hire (e.g., 30)"},
-        ],
-        "_default": [
-            {"title": "Improve process efficiency by target %", "description": "Identify and eliminate bottlenecks in key processes to improve overall operational efficiency", "uom_type": "PERCENT_MIN", "target_hint": "Improvement % (e.g., 15)"},
-        ],
-    },
-    "People Development": {
-        "_default": [
-            {"title": "Complete professional development training hours", "description": "Invest in skill building through certifications, courses, and workshops aligned with career growth", "uom_type": "NUMERIC_MIN", "target_hint": "Training hours (e.g., 40)"},
-            {"title": "Mentor junior team members", "description": "Conduct regular mentoring sessions to support junior colleagues' professional growth and skill development", "uom_type": "NUMERIC_MIN", "target_hint": "Mentoring sessions (e.g., 12)"},
-            {"title": "Achieve team engagement score target", "description": "Foster a positive team environment through collaboration, recognition, and constructive feedback", "uom_type": "PERCENT_MIN", "target_hint": "Engagement score % (e.g., 80)"},
-        ],
-    },
-    "Innovation & Digital": {
-        "Engineering": [
-            {"title": "Deliver innovation/PoC projects", "description": "Research and prototype new technologies or approaches that can improve products or internal processes", "uom_type": "NUMERIC_MIN", "target_hint": "PoCs delivered (e.g., 3)"},
-            {"title": "Automate repetitive manual processes", "description": "Identify and automate manual workflows to save time and reduce errors across the team", "uom_type": "NUMERIC_MIN", "target_hint": "Processes automated (e.g., 5)"},
-        ],
-        "_default": [
-            {"title": "Propose and implement process digitization initiatives", "description": "Identify manual or paper-based processes and propose digital solutions to improve efficiency", "uom_type": "NUMERIC_MIN", "target_hint": "Initiatives implemented (e.g., 2)"},
-            {"title": "Adopt new tools/technologies for productivity", "description": "Evaluate and adopt new tools that improve team productivity, collaboration, or output quality", "uom_type": "NUMERIC_MIN", "target_hint": "Tools adopted (e.g., 2)"},
-        ],
-    },
-    "Safety & Compliance": {
-        "_default": [
-            {"title": "Achieve zero safety incidents", "description": "Maintain a safe working environment with zero reportable safety incidents through proactive measures", "uom_type": "ZERO", "target_hint": "0 (zero incidents = success)"},
-            {"title": "Complete all mandatory compliance trainings on time", "description": "Ensure 100% completion of required compliance and safety trainings within deadlines", "uom_type": "PERCENT_MIN", "target_hint": "Completion % (e.g., 100)"},
-            {"title": "Pass all compliance audits without findings", "description": "Ensure department processes and documentation are audit-ready and pass compliance reviews cleanly", "uom_type": "ZERO", "target_hint": "0 (zero findings = success)"},
-        ],
-    },
-    "Sustainability": {
-        "_default": [
-            {"title": "Reduce resource consumption by target %", "description": "Implement measures to reduce energy, paper, or material consumption in day-to-day operations", "uom_type": "PERCENT_MIN", "target_hint": "Reduction % (e.g., 10)"},
-            {"title": "Participate in CSR/sustainability initiatives", "description": "Actively contribute to corporate sustainability programs and community engagement activities", "uom_type": "NUMERIC_MIN", "target_hint": "Initiatives participated (e.g., 4)"},
-        ],
-    },
-    "Quality Improvement": {
-        "Engineering": [
-            {"title": "Achieve code review coverage target", "description": "Ensure all production code changes go through peer review to maintain code quality standards", "uom_type": "PERCENT_MIN", "target_hint": "Coverage % (e.g., 100)"},
-            {"title": "Reduce defect leakage to production", "description": "Improve testing effectiveness to catch more defects before they reach production environments", "uom_type": "NUMERIC_MAX", "target_hint": "Defects leaked (e.g., 3)"},
-        ],
-        "_default": [
-            {"title": "Reduce error/rework rate in deliverables", "description": "Improve first-time quality of work outputs to minimize rework and corrections", "uom_type": "PERCENT_MAX", "target_hint": "Rework rate % (e.g., 5)"},
-            {"title": "Implement quality checkpoints in key processes", "description": "Introduce systematic quality checks at critical stages of workflow to prevent defects", "uom_type": "NUMERIC_MIN", "target_hint": "Checkpoints implemented (e.g., 3)"},
-        ],
-    },
-}
-
-
-@app.post("/api/ai/goal-suggestions")
-@auth_required
-def ai_goal_suggestions():
-    d = request.json
-    thrust_area = d.get("thrust_area", "")
-    u = current_user()
-    department = u["department"] if u else ""
-    suggestions = GOAL_SUGGESTIONS.get(thrust_area, {})
-    dept_suggestions = suggestions.get(department, suggestions.get("_default", []))
-    return jsonify({"suggestions": dept_suggestions, "thrust_area": thrust_area, "department": department})
-
-
 @app.get("/api/ai/checkin-summary/<int:sheet_id>")
 @auth_required
 @role_required("MANAGER", "ADMIN")
@@ -1142,32 +1016,6 @@ def ai_checkin_summary(sheet_id):
         "recommendations": recommendations,
         "prior_comments": len(comments),
     })
-
-
-@app.get("/api/debug/paths")
-def debug_paths():
-    import glob
-    base = os.path.dirname(os.path.abspath(__file__))
-    cwd = os.getcwd()
-    candidates = [
-        os.path.join(base, "static"),
-        os.path.join(cwd, "static"),
-        os.path.join(cwd, "server", "static"),
-    ]
-    result = {
-        "cwd": cwd,
-        "file_dir": base,
-        "static_folder": STATIC_FOLDER,
-        "static_exists": os.path.exists(STATIC_FOLDER),
-    }
-    for c in candidates:
-        result[c] = os.path.exists(c)
-    try:
-        result["cwd_contents"] = os.listdir(cwd)
-        result["base_contents"] = os.listdir(base)
-    except:
-        pass
-    return jsonify(result)
 
 
 @app.route("/", defaults={"path": ""})

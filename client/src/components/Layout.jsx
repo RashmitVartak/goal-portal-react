@@ -27,7 +27,7 @@ export default function Layout() {
     <div className="flex h-screen bg-gray-50">
       <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 transform transition-transform duration-300 lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-slate-700">
-          <h1 className="text-lg font-bold flex items-center gap-2"><span className="text-2xl">⭐</span><span className="text-brand">TrackStar</span></h1>
+          <h1 className="text-lg font-bold flex items-center gap-2"><span className="text-2xl">⭐</span><span className="text-white">Track<span className="text-brand">Star</span></span></h1>
         </div>
         <nav className="mt-4 px-3 space-y-1">
           {nav.filter(n => n.roles.includes(user.role)).map(n => (
