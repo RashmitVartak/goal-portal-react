@@ -1,13 +1,9 @@
 import os, csv, io
-from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv(Path(__file__).parent / ".env")
 from datetime import datetime, date
 from flask import Flask, request, jsonify, session, Response, send_from_directory
 from flask_cors import CORS
 from database import get_db, init_db, seed_data
 from scoring import compute_score
-from ai_helper import ai_generate_goal, ai_summarize_report
 
 STATIC_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
@@ -1108,44 +1104,6 @@ def ai_checkin_summary(sheet_id):
         "recommendations": recommendations,
         "prior_comments": len(comments),
     })
-
-
-@app.post("/api/ai/generate-goal")
-@auth_required
-def api_ai_generate_goal():
-    d = request.json
-    u = current_user()
-    description = d.get("description", "")
-    thrust_area = d.get("thrust_area", "")
-    if not description:
-        return jsonify({"error": "Please describe what you want to achieve"}), 400
-    result = ai_generate_goal(description, u["department"], u["designation"], thrust_area)
-    return jsonify(result)
-
-
-@app.post("/api/ai/report-summary")
-@auth_required
-def api_ai_report_summary():
-    d = request.json
-    query = d.get("query", "")
-    u = current_user()
-    if not query:
-        return jsonify({"error": "Please enter a question"}), 400
-    cycle = active_cycle()
-    if not cycle:
-        return jsonify({"error": "No active cycle"}), 400
-    db = get_db()
-    visible_ids = get_visible_employee_ids(u, db)
-    if visible_ids is None:
-        report = rows_to_list(db.execute("SELECT e.employee_name,e.department,e.designation,g.goal_title,g.uom_type,g.target_value,g.weightage,g.q1_actual,g.q1_score,g.q2_actual,g.q2_score,g.q3_actual,g.q3_score,g.q4_actual,g.q4_score FROM goals g JOIN goal_sheets gs ON g.sheet_id=gs.sheet_id JOIN employees e ON gs.employee_id=e.employee_id WHERE gs.cycle_id=? AND gs.status='APPROVED' ORDER BY e.employee_name", (cycle["cycle_id"],)).fetchall())
-    else:
-        ph = ",".join(["?" for _ in visible_ids])
-        report = rows_to_list(db.execute(f"SELECT e.employee_name,e.department,e.designation,g.goal_title,g.uom_type,g.target_value,g.weightage,g.q1_actual,g.q1_score,g.q2_actual,g.q2_score,g.q3_actual,g.q3_score,g.q4_actual,g.q4_score FROM goals g JOIN goal_sheets gs ON g.sheet_id=gs.sheet_id JOIN employees e ON gs.employee_id=e.employee_id WHERE gs.cycle_id=? AND gs.status='APPROVED' AND e.employee_id IN ({ph}) ORDER BY e.employee_name", (cycle["cycle_id"], *visible_ids)).fetchall())
-    db.close()
-    if not report:
-        return jsonify({"summary": "No approved goal data available to analyze."})
-    summary = ai_summarize_report(report, query, u["role"], u["department"])
-    return jsonify({"summary": summary})
 
 
 @app.route("/", defaults={"path": ""})

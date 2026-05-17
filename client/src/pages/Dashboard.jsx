@@ -11,9 +11,6 @@ export default function Dashboard() {
   const [form, setForm] = useState({ goal_title: '', goal_description: '', thrust_area_id: '', uom_type: 'NUMERIC_MIN', target_value: '', weightage: 10 });
   const [error, setError] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState(null);
 
   const load = () => { api.get('/dashboard').then(setData); api.get('/thrust-areas').then(setThrustAreas); };
   useEffect(load, []);
@@ -203,53 +200,7 @@ export default function Dashboard() {
               </div>
               {goals.length >= 8 && <p className="text-yellow-600">Maximum 8 goals reached.</p>}
               {showForm && goals.length < 8 && (
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4">
-                    <h4 className="font-bold text-purple-800 text-sm mb-2">🤖 AI Goal Writer <span className="font-normal text-purple-500">— powered by Gemini</span></h4>
-                    <p className="text-xs text-purple-600 mb-3">Describe what you want to achieve in plain English and AI will generate a SMART goal for you.</p>
-                    <div className="flex gap-2">
-                      <input value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="e.g. I want to increase my sales revenue this quarter..."
-                        className="flex-1 border border-purple-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent" />
-                      <button type="button" disabled={aiLoading || !aiPrompt.trim()} onClick={async () => {
-                        setAiLoading(true); setAiResult(null);
-                        try {
-                          const ta = thrustAreas.find(t => String(t.thrust_area_id) === String(form.thrust_area_id));
-                          const res = await api.post('/ai/generate-goal', { description: aiPrompt, thrust_area: ta?.thrust_area_name || '' });
-                          setAiResult(res);
-                        } catch (err) { setError(err.message); }
-                        setAiLoading(false);
-                      }} className={`px-4 py-2 rounded-lg text-sm font-semibold ${aiLoading ? 'bg-purple-200 text-purple-400' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>
-                        {aiLoading ? '✨ Generating...' : '✨ Generate'}
-                      </button>
-                    </div>
-                    {aiResult && aiResult.title && (
-                      <div className="mt-3 bg-white border border-purple-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="font-bold text-sm text-gray-900">{aiResult.title}</p>
-                          <button onClick={() => {
-                            setForm({...form,
-                              goal_title: aiResult.title || '',
-                              goal_description: aiResult.description || '',
-                              uom_type: aiResult.uom_type || 'NUMERIC_MIN',
-                            });
-                            setAiResult(null); setAiPrompt('');
-                          }} className="bg-purple-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-purple-700 whitespace-nowrap ml-2">Use This</button>
-                        </div>
-                        <p className="text-xs text-gray-600 mb-2">{aiResult.description}</p>
-                        <div className="flex gap-3 text-xs text-purple-600">
-                          <span>UoM: {UOM_LABELS[aiResult.uom_type] || aiResult.uom_type}</span>
-                          {aiResult.target_hint && <span>Target: {aiResult.target_hint}</span>}
-                          {aiResult.weightage_hint && <span>Suggested Weight: {aiResult.weightage_hint}%</span>}
-                        </div>
-                      </div>
-                    )}
-                    {aiResult && !aiResult.title && <p className="mt-2 text-xs text-red-500">AI couldn't parse the response. Try rephrasing.</p>}
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <p className="text-xs text-gray-400 mb-3">Or fill in manually:</p>
-                  </div>
-                  <form onSubmit={addGoal} className="space-y-4">
+                <form onSubmit={addGoal} className="space-y-4">
                   <Input label="Goal Title *" value={form.goal_title} onChange={v => setForm({...form, goal_title: v})} required />
                   <Input label="Description" value={form.goal_description} onChange={v => setForm({...form, goal_description: v})} textarea />
                   <Select label="Thrust Area *" value={form.thrust_area_id} onChange={v => setForm({...form, thrust_area_id: v})} options={thrustAreas.map(t => ({ value: t.thrust_area_id, label: t.thrust_area_name }))} />
@@ -261,10 +212,9 @@ export default function Dashboard() {
                   </div>
                   <div className="flex gap-3">
                     <button type="submit" className="bg-brand text-gray-900 px-6 py-2 rounded-lg font-semibold hover:bg-brand-dark">Add Goal</button>
-                    <button type="button" onClick={() => { setShowForm(false); setAiResult(null); setAiPrompt(''); }} className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg">Cancel</button>
+                    <button type="button" onClick={() => setShowForm(false)} className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg">Cancel</button>
                   </div>
-                  </form>
-                </div>
+                </form>
               )}
             </div>
             <div className="space-y-4">
